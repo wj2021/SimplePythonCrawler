@@ -7,7 +7,7 @@ import time
 
 
 # 创建本地保存爬取数据的根目录
-localSaveRootDir = 'F:\\壁纸2019.10.20\\multiProcessAndThread002\\'
+localSaveRootDir = 'F:\\壁纸2019.10.20\\multiProcessAndThread\\'
 if not os.path.exists(localSaveRootDir[0:localSaveRootDir.index(localSaveRootDir.split('\\')[-2])]):
     os.mkdir(localSaveRootDir[0:localSaveRootDir.index(localSaveRootDir.split('\\')[-2])])
 if not os.path.exists(localSaveRootDir):
