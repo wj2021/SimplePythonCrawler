@@ -1,5 +1,6 @@
 import requests
 import os
+import time
 from bs4 import BeautifulSoup
 
 url = 'https://baidu.com'
@@ -24,3 +25,8 @@ except:
     print('error')
 
 
+st = time.time()
+for i in range(pow(10, 10)):
+    pass
+et = time.time()
+print(et-st) # 预计2.78个小时，按照1000000/s，实际20min，8000000/s
