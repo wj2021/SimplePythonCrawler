@@ -5,60 +5,85 @@ import time
 from multiprocessing import Pool
 import traceback
 
+totalPage = 174
+rootUrl = 'https://wallhaven.cc/search?categories=111&purity=100&resolutions=3840x2160&ratios=16x9&topRange=1y&sorting=toplist&order=desc&page='
+rootDir = 'C:/Users/Jun/Desktop/test/'
+header = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.69 Safari/537.36 Edg/81.0.416.34"}
 
-rootUrl = 'https://wallhaven.cc/toplist?page='
-rootDir = 'E:\\壁纸\\wallhaven.cc\\'
-if not os.path.exists(rootDir):
-    os.mkdir(rootDir)
+
+# 获取当前时间并格式化
+def curTime():
+    return '['+time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())+'] '
+
+
+def urlGet(url, sleepTime=0, timeout1=10):
+    # 不停的进行get请求直到成功，并返回结果
+    while True:
+        try:
+            r = requests.get(url, headers=header, timeout=timeout1)
+            time.sleep(sleepTime)
+            r.close()
+            if r.ok: # 检查网页是否返回成功
+                return r
+            print(curTime() + "429 Too Many Requests, reGet " + url + " again!!!")
+            sleepTime = sleepTime + 1
+            if sleepTime > 10:
+                sleepTime = 10
+        except:
+            sleepTime = sleepTime + 1
+            if sleepTime > 10:
+                sleepTime = 10
+            print(curTime() + "Exception occured, reGet " + url + " again!!!")
 
 
 def down_pic(_page_num):
+    # 创建保存图片的目录
     save_path = rootDir + str(_page_num)
     if not os.path.exists(save_path):
         os.mkdir(save_path)
+    
+    img_real_url = "NULL"
+
     try:
-        r = requests.get(rootUrl + str(_page_num))
-        r.close()
+        # 获取图片网站主页
+        r = urlGet(rootUrl + str(_page_num), sleepTime=2)
         r.encoding = r.apparent_encoding
         soup = BeautifulSoup(r.text, 'html.parser')
-        # 爬取图片并下载到本地
+        # 获取所有壁纸的img标签
         img_list = soup.find_all(name='img', attrs={'alt': 'loading', 'class': 'lazyload'})
-        print('page num: ' + str(_page_num) + ' :: ' + 'pic_count: ' + str(len(img_list)))
+        picCount = len(img_list)
+        print('page: ' + str(_page_num) + '/' + str(totalPage) + ', ' + 'pic_count: ' + str(picCount))
 
         count = 1
         for img in img_list:
             # 获取图片真实url地址
-            r = requests.get(img.next_sibling.attrs.get('href'), timeout=5)
-            r.close()
-            soup1 = BeautifulSoup(r.text, 'html.parser')
-
-            img_real_url = soup1.find(name='img', attrs={'id': 'wallpaper'}).attrs.get('src')
-
-            path = save_path + "\\" + str(img_real_url).split('/')[-1]
+            r = urlGet(img.next_sibling.attrs.get('href'), sleepTime=5)
+            img_real_url = BeautifulSoup(r.text, 'html.parser').find(name='img', attrs={'id': 'wallpaper'}).attrs.get('src')
+            path = save_path + "/" + str(img_real_url).split('/')[-1]
             if not os.path.exists(path):
-                img = requests.get(img_real_url)
-                img.close()
+                # 获取图片并保存到本地
+                img = urlGet(img_real_url, 1)
                 with open(path, 'wb') as file:
                     file.write(img.content)
-                    file.close()
-                    print(str(time.ctime())+' '+str(_page_num)+' page\'s pic url: '+str(img_real_url)+' saved success!')
+                print(curTime() + 'page ' + str(_page_num) + ', pic ' + str(count) + '/' + str(picCount) + ', url: ' + str(img_real_url) + ' saved success!')
             else:
-                print(str(time.ctime()) + ' ' + path + ' 文件已存在')
-                # 避免被检测到请求过快而终止
-                time.sleep(2)
-            time.sleep(2)
+                print(curTime() + 'page ' + str(_page_num) + ', pic ' + str(count) + '/' + str(picCount) + ',  ' + path + ' 文件已存在')
             count = count + 1
     except Exception as e:
-        print(str(time.ctime()) + ' ' + str(_page_num) + ' ' + img_real_url + ' exception')
+        print(curTime() + 'page ' + str(_page_num) + ', url: ' + str(img_real_url) + ' exception!!!')
         print(e.args)
-        print('==============================')
+        print('============================================================')
         print(traceback.format_exc())
 
 
 if __name__ == '__main__':
+    if not os.path.exists(rootDir):
+        os.mkdir(rootDir)
+
     start_time = time.time()
-    pool = Pool(10)
-    for page_num in range(1, 201):
+    processNum = 16
+    pool = Pool(processNum)
+    for page_num in range(1, totalPage+1):
         pool.apply_async(down_pic, (page_num,))
     pool.close()
     pool.join()
